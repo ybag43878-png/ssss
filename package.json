@@ -1,0 +1,12 @@
+{
+  "name": "ai-kiosk-app",
+  "version": "1.0.0",
+  "description": "Vercel 서버리스 및 Gemini API 기반 스마트 AI 키오스크",
+  "main": "index.html",
+  "scripts": {
+    "start": "vercel dev"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.21.0"
+  }
+}
