@@ -14,8 +14,8 @@ export default async function handler(req, res) {
 
     const genAI = new GoogleGenerativeAI(apiKey);
     
-    // 👇 핵심: 404 에러가 나는 'gemini-1.5-flash' 대신 안정적인 'gemini-pro'로 설정합니다.
-    const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
+    // 👇 최신 표준 모델명으로 변경하여 404 에러 원인 차단
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
     const prompt = `너는 카페/패스트푸드 스마트 키오스크에 탑재된 AI 바리스타야.
 사용자의 요청: "${userInput}"
