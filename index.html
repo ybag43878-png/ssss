@@ -18,7 +18,6 @@
     </style>
 </head>
 <body>
-
     <div class="kiosk-container">
         <h1>☕ AI 맞춤 추천 키오스크</h1>
         
@@ -58,14 +57,12 @@
                 const data = await response.json();
 
                 if (response.ok) {
-                    // 성공 시: 줄바꿈(\n)을 <br>로 바꿔서 출력
                     resultBox.innerHTML = data.result.replace(/\n/g, '<br>');
                 } else {
-                    // 🚨 실패 시: 서버에서 보내준 진짜 구글 에러 원인(details)을 화면에 출력
-                    resultBox.innerHTML = `<span class="error-msg">⚠️ 오류 발생: ${data.error}</span><br><br><small style="color:gray;">원인: ${data.details}</small>`;
+                    resultBox.innerHTML = `<span class="error-msg">⚠️ 오류: ${data.error}</span><br><small style="color:gray;">상세: ${data.details}</small>`;
                 }
             } catch (err) {
-                resultBox.innerHTML = `<span class="error-msg">⚠️ 통신 실패. 로컬 서버(vercel dev)가 실행 중인지 확인하세요.</span>`;
+                resultBox.innerHTML = `<span class="error-msg">⚠️ 통신 실패. 로컬 서버가 실행 중인지 확인하세요.</span>`;
             }
         });
     </script>
