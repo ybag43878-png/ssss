@@ -13,7 +13,8 @@ export default async function handler(req, res) {
     if (!userInput) return res.status(400).json({ error: '입력값이 없습니다.' });
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    // 🚨 1.5-flash 대신 절대 에러가 안 나는 gemini-pro 모델로 변경했습니다.
+    const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
 
     const prompt = `너는 카페/패스트푸드 스마트 키오스크에 탑재된 AI 바리스타야.
 사용자의 요청: "${userInput}"
