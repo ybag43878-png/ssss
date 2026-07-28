@@ -45,7 +45,7 @@
             if (!input.trim()) return alert('내용을 입력해주세요!');
 
             resultBox.style.display = 'block';
-            resultBox.innerHTML = '🤖 AI가 맛있는 조합을 고민 중입니다...';
+            resultBox.innerHTML = '🤖 AI 바리스타가 메뉴를 추천하고 있습니다...';
 
             try {
                 const response = await fetch('/api/generate', {
@@ -62,7 +62,7 @@
                     resultBox.innerHTML = `<span class="error-msg">⚠️ 오류: ${data.error}</span><br><small style="color:gray;">상세: ${data.details}</small>`;
                 }
             } catch (err) {
-                resultBox.innerHTML = `<span class="error-msg">⚠️ 통신 실패. 로컬 서버가 실행 중인지 확인하세요.</span>`;
+                resultBox.innerHTML = `<span class="error-msg">⚠️ 통신 실패.</span>`;
             }
         });
     </script>
