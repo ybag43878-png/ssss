@@ -1,46 +1,442 @@
-const { GoogleGenerativeAI } = require('@google/generative-ai');
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Golden Years Paws - AI 스마트 키오스크</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { 
+            font-family: sans-serif; 
+            background-color: #fcfae4; /* Neutral Cream background */
+            color: #1c1c0f;
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            min-height: 100vh; 
+            padding: 20px; 
+            padding-bottom: 90px; /* 하단 네비게이션 바 공간 확보 */
+        }
+        
+        .kiosk-container { 
+            background: #ffffff; 
+            width: 100%; 
+            max-width: 480px; 
+            border-radius: 24px; 
+            box-shadow: 0 10px 30px rgba(115, 92, 0, 0.1); 
+            padding: 24px; 
+            border: 3px solid #e5e3ce; 
+        }
 
-export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'POST 요청만 허용됩니다.' });
-  }
+        /* 상단 헤더 */
+        .app-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+        .brand-area {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .brand-logo {
+            width: 40px;
+            height: 40px;
+            background: #ffd54f;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            border: 2px solid #735c00;
+        }
+        .brand-name {
+            font-size: 18px;
+            font-weight: 800;
+            color: #735c00;
+        }
+        .user-profile-btn {
+            width: 44px;
+            height: 44px;
+            background: #735c00;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #ffffff;
+            border: none;
+            cursor: pointer;
+        }
 
-  try {
-    const { userInput } = req.body;
-    const apiKey = process.env.GEMINI_API_KEY;
+        /* 탭별 화면 전환용 클래스 */
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
 
-    if (!apiKey) return res.status(500).json({ error: 'API 키가 설정되지 않았습니다.' });
-    if (!userInput) return res.status(400).json({ error: '입력값이 없습니다.' });
+        /* 안내 배너 카드 */
+        .info-card {
+            background: #f6f5df;
+            border: 2px solid #e5e3ce;
+            border-radius: 20px;
+            padding: 20px;
+            margin-bottom: 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .info-card h2 { font-size: 20px; font-weight: 700; color: #1c1c0f; margin-bottom: 6px; }
+        .info-card p { font-size: 14px; color: #4d4634; line-height: 1.4; }
 
-    const genAI = new GoogleGenerativeAI(apiKey);
-    
-    // 👇 최신 지원 모델명인 gemini-3.5-flash로 지정합니다.
-    const model = genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
+        /* 타이틀 스타일 */
+        .section-title {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: #1c1c0f;
+        }
+        .section-desc {
+            font-size: 14px;
+            color: #4d4634;
+            margin-bottom: 16px;
+        }
 
-    const prompt = `너는 카페/패스트푸드 스마트 키오스크에 탑재된 AI 바리스타야.
-사용자의 요청: "${userInput}"
+        /* 입력 및 폼 요소 */
+        input[type="text"], textarea { 
+            width: 100%; 
+            padding: 16px; 
+            border: 2px solid #d0c6ae; 
+            border-radius: 16px; 
+            margin-bottom: 16px; 
+            font-size: 16px; 
+            outline: none; 
+            background: #fff;
+            color: #1c1c0f;
+        }
+        input[type="text"]:focus, textarea:focus {
+            border-color: #286b33;
+        }
+        textarea { resize: none; height: 100px; font-family: sans-serif; }
 
-다음 양식에 맞춰 고객에게 친절하고 명확하게 추천해줘:
+        /* 오버사이즈 버튼 (최소 64px 높이 가이드 반영) */
+        .action-btn { 
+            width: 100%; 
+            background: #735c00; 
+            color: #ffffff; 
+            border: none; 
+            min-height: 64px; 
+            border-radius: 16px; 
+            font-size: 18px; 
+            font-weight: 700; 
+            cursor: pointer; 
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            box-shadow: 0 4px 12px rgba(115, 92, 0, 0.2);
+            transition: background 0.2s;
+            margin-bottom: 20px;
+        }
+        .action-btn:hover { background: #574500; }
 
-[추천 메뉴]
-- 음료/메뉴 이름 (예상 가격)
+        .action-btn.secondary-action {
+            background: #286b33;
+            box-shadow: 0 4px 12px rgba(40, 107, 51, 0.2);
+        }
+        .action-btn.secondary-action:hover { background: #1e5227; }
 
-[추천 이유]
-- 왜 이 메뉴를 추천했는지 2문장으로 설명
+        /* 결과 박스 스타일 */
+        .result-box { 
+            display: none; 
+            background: #f6f5df; 
+            border: 2px solid #ffd54f; 
+            padding: 20px; 
+            border-radius: 16px; 
+            font-size: 15px; 
+            line-height: 1.6; 
+            margin-bottom: 20px; 
+            color: #1c1c0f;
+        }
+        .error-msg { color: #ba1a1a; font-weight: bold; }
 
-[환상의 꿀조합 디저트]
-- 함께 주문하면 좋은 디저트 1가지 추천`;
+        /* 팁 카드 */
+        .tip-box {
+            background: #f6f5df;
+            border-left: 6px solid #286b33;
+            padding: 16px;
+            border-radius: 12px;
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+            margin-top: 10px;
+        }
+        .tip-icon {
+            width: 32px;
+            height: 32px;
+            background: #286b33;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+        .tip-text { font-size: 14px; color: #4d4634; line-height: 1.5; }
 
-    const result = await model.generateContent(prompt);
-    const text = result.response.text();
+        /* 경고/주의 카드 (커뮤니티 가이드) */
+        .warning-card {
+            background: #ffdad6;
+            border: 2px solid #ffb1c5;
+            border-radius: 16px;
+            padding: 16px;
+            text-align: center;
+            margin-bottom: 16px;
+        }
+        .warning-card h4 { color: #93000a; font-size: 15px; font-weight: 700; margin-bottom: 6px; }
+        .warning-card p { color: #4d4634; font-size: 13px; }
 
-    return res.status(200).json({ result: text });
+        /* 게시판(Circle) 스타일 유지 및 디자인 이식 */
+        .post-list { 
+            max-height: 250px; 
+            overflow-y: auto; 
+            display: flex; 
+            flex-direction: column; 
+            gap: 12px; 
+            margin-top: 15px; 
+        }
+        .post-item { 
+            background: #f9f9f9; 
+            padding: 14px; 
+            border-radius: 12px; 
+            border: 1px solid #d0c6ae; 
+            font-size: 14px; 
+        }
+        .post-header { display: flex; justify-content: space-between; font-size: 12px; color: #7f7662; margin-bottom: 6px; }
+        .post-content { color: #1c1c0f; word-break: break-all; line-height: 1.4; }
 
-  } catch (error) {
-    console.error('Gemini Error:', error);
-    return res.status(500).json({ 
-      error: '구글 AI 호출 에러', 
-      details: error.message 
-    });
-  }
-}
+        /* 하단 네비게이션 바 (Stitch 시안 반영) */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background: #fcfae4;
+            border-top: 2px solid #e5e3ce;
+            display: flex;
+            justify-content: space-around;
+            padding: 12px 0;
+            box-shadow: 0 -4px 10px rgba(0,0,0,0.03);
+            z-index: 100;
+        }
+        .nav-item {
+            background: transparent;
+            border: none;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            color: #7f7662;
+            padding: 6px 20px;
+            border-radius: 16px;
+            transition: 0.2s;
+        }
+        .nav-item.active {
+            background: #abf4ac;
+            color: #002107;
+        }
+        .nav-item span.icon { font-size: 20px; }
+    </style>
+</head>
+<body>
+
+    <div class="kiosk-container">
+        <!-- 상단 브랜드 헤더 -->
+        <div class="app-header">
+            <div class="brand-area">
+                <div class="brand-logo">🐶</div>
+                <div class="brand-name">kioskandsecond</div>
+            </div>
+            <button class="user-profile-btn">👤</button>
+        </div>
+
+        <!-- [탭 1] Home: AI 추천 키오스크 화면 -->
+        <div id="tab-home" class="tab-content active">
+            <h1 class="section-title">원하는 메뉴나 기분을 적어주세요</h1>
+            <p class="section-desc">오늘 하루는 어떠셨나요? 멍멍이가 골라드릴게요!</p>
+
+            <textarea id="userInput" placeholder="여기에 적어주세요... (예: 매콤한 게 당겨요)"></textarea>
+            
+            <!-- 기존 핵심 기능: api/generate.js를 호출하는 버튼 -->
+            <button class="action-btn" id="submitBtn">
+                <span>✨ 메뉴 추천받기</span>
+            </button>
+            
+            <div class="result-box" id="resultBox"></div>
+
+            <div class="tip-box">
+                <div class="tip-icon">💡</div>
+                <div class="tip-text">
+                    <b>멍멍이의 팁!</b> 비가 오는 날에는 따뜻한 국물 요리가 최고예요. 오늘은 어떤 날씨인가요?
+                </div>
+            </div>
+        </div>
+
+        <!-- [탭 2] Top Picks: 추천 메뉴 소개 화면 -->
+        <div id="tab-picks" class="tab-content">
+            <h1 class="section-title">오늘의 추천 메뉴</h1>
+            <p class="section-desc">멍멍이가 엄선한 인기 보양식 코너입니다.</p>
+            
+            <div class="info-card" style="flex-direction: column; align-items: flex-start; gap: 10px;">
+                <h2>🍲 삼계탕 & 비빔밥 특선</h2>
+                <p>환절기 기력 회복을 위한 특급 메뉴가 준비되어 있습니다.</p>
+            </div>
+
+            <div class="tip-box">
+                <div class="tip-icon">🐾</div>
+                <div class="tip-text">마음에 드는 메뉴가 없다면 Home 탭에서 직접 기분을 입력해 보세요!</div>
+            </div>
+        </div>
+
+        <!-- [탭 3] Circle: 로컬스토리지 기반 리뷰 게시판 화면 -->
+        <div id="tab-circle" class="tab-content">
+            <div class="info-card">
+                <div>
+                    <h2>우리끼리 이야기</h2>
+                    <p>맛있는 메뉴를 이웃에게 추천해주세요!</p>
+                </div>
+                <div style="font-size: 32px;">💌</div>
+            </div>
+
+            <div class="warning-card">
+                <h4>⚠️ *욕설은 삼가시기 바랍니다*</h4>
+                <p>모두가 즐거운 커뮤니티를 위해 고운 말을 사용해주세요.</p>
+            </div>
+
+            <input type="text" id="boardAuthor" placeholder="닉네임 (이름이나 별명)" maxlength="10" />
+            
+            <textarea id="boardContent" placeholder="어떤 메뉴가 가장 맛있었나요? 이웃분들에게 친절하게 알려주세요!"></textarea>
+            
+            <!-- 기존 게시판 등록 기능 버튼 -->
+            <button class="action-btn secondary-action" onclick="addPost()">
+                <span>🕊️ 후기 등록하기</span>
+            </button>
+
+            <div class="section-title" style="font-size: 16px; margin-top: 15px;">💬 이웃들의 생생 후기</div>
+            <div class="post-list" id="postList">
+                <!-- 후기 목록이 여기에 표시됩니다 -->
+            </div>
+        </div>
+    </div>
+
+    <!-- 하단 네비게이션 바 (Stitch 시안 디자인 구현) -->
+    <nav class="bottom-nav">
+        <button class="nav-item active" onclick="switchTab('home', this)">
+            <span class="icon">🐶</span>
+            <span>Home</span>
+        </button>
+        <button class="nav-item" onclick="switchTab('picks', this)">
+            <span class="icon">👍</span>
+            <span>Top Picks</span>
+        </button>
+        <button class="nav-item" onclick="switchTab('circle', this)">
+            <span class="icon">👥</span>
+            <span>Circle</span>
+        </button>
+    </nav>
+
+    <script>
+        // 화면 탭 전환 함수
+        function switchTab(tabName, element) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+
+            document.getElementById('tab-' + tabName).classList.add('active');
+            element.classList.add('active');
+        }
+
+        // 기존 AI 추천 기능 연동 (api/generate.js 서버리스 함수 호출)
+        document.getElementById('submitBtn').addEventListener('click', async () => {
+            const input = document.getElementById('userInput').value;
+            const resultBox = document.getElementById('resultBox');
+
+            if (!input.trim()) return alert('내용을 입력해주세요!');
+
+            resultBox.style.display = 'block';
+            resultBox.innerHTML = '🤖 멍멍이 바리스타가 메뉴를 고르는 중입니다...';
+
+            try {
+                const response = await fetch('/api/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userInput: input })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    resultBox.innerHTML = data.result.replace(/\n/g, '<br>');
+                } else {
+                    resultBox.innerHTML = `<span class="error-msg">⚠️ 오류: ${data.error}</span><br><small style="color:gray;">상세: ${data.details}</small>`;
+                }
+            } catch (err) {
+                resultBox.innerHTML = `<span class="error-msg">⚠️ 통신 실패. 서버 연결을 확인해주세요.</span>`;
+            }
+        });
+
+        // 기존 로컬스토리지(localStorage) 기반 후기 게시판 기능 코드
+        function getPosts() {
+            const posts = localStorage.getItem('kiosk_board');
+            return posts ? JSON.parse(posts) : [];
+        }
+
+        function renderPosts() {
+            const postList = document.getElementById('postList');
+            if (!postList) return;
+            const posts = getPosts();
+            
+            if (posts.length === 0) {
+                postList.innerHTML = '<div style="text-align:center; color:#7f7662; font-size:13px; padding: 20px;">아직 등록된 후기가 없습니다. 첫 후기를 남겨보세요!</div>';
+                return;
+            }
+
+            postList.innerHTML = posts.reverse().map(p => `
+                <div class="post-item">
+                    <div class="post-header">
+                        <span><b>👤 ${p.author}</b></span>
+                        <span>${p.date}</span>
+                    </div>
+                    <div class="post-content">${p.content}</div>
+                </div>
+            `).join('');
+        }
+
+        function addPost() {
+            const author = document.getElementById('boardAuthor').value.trim();
+            const content = document.getElementById('boardContent').value.trim();
+
+            if (!author) return alert('닉네임을 입력해주세요!');
+            if (!content) return alert('내용을 입력해주세요!');
+
+            const newPost = {
+                author,
+                content,
+                date: new Date().toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+            };
+
+            const posts = getPosts();
+            posts.push(newPost);
+            localStorage.setItem('kiosk_board', JSON.stringify(posts));
+
+            document.getElementById('boardAuthor').value = '';
+            document.getElementById('boardContent').value = '';
+            renderPosts();
+        }
+
+        // 페이지 로드 시 후기 목록 불러오기
+        window.onload = renderPosts;
+    </script>
+</body>
+</html>
